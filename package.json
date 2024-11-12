@@ -1,5 +1,5 @@
 {
-    "name": "auth-service",
+    "name": "todo-backend",
     "version": "1.0.0",
     "description": "",
     "main": "index.js",
@@ -8,7 +8,7 @@
         "server": "nodemon src/server.ts",
         "format:check": "prettier . --check",
         "format:fix": "prettier . --write",
-        "lint": "eslint .",
+        "lint:check": "eslint .",
         "lint:fix": "eslint . --fix",
         "prepare": "husky"
     },

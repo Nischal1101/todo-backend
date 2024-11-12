@@ -20,6 +20,7 @@ export default tseslint.config(
             // "no-console": "off",
             "@typescript-eslint/no-misused-promises": "off",
             "@typescript-eslint/require-await": "off",
+            "prefer-const": "off",
         },
     },
 );

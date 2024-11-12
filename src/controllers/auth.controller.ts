@@ -1,4 +1,4 @@
-import { NextFunction, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import {
     IRegisterUserRequest,
     ReturnResponse,
@@ -31,7 +31,7 @@ export const registerUser = async (
     } catch (error: unknown) {
         if (error instanceof CustomErrorHandler)
             return next(new CustomErrorHandler(400, error.message));
-        else return next(new CustomErrorHandler(400, "something went wrong!"));
+        else return next(new CustomErrorHandler(400, String(error)));
     }
     if (existingUser.length > 0) {
         return next(new CustomErrorHandler(400, "Email already exists"));
@@ -47,7 +47,7 @@ export const registerUser = async (
     } catch (error: unknown) {
         if (error instanceof CustomErrorHandler)
             return next(new CustomErrorHandler(400, error.message));
-        else return next(new CustomErrorHandler(400, "something went wrong!"));
+        else return next(new CustomErrorHandler(400, String(error)));
     }
     logger.info("User has been registered successfully ", {
         id: user[0]?.id,
@@ -102,4 +102,10 @@ export const loginUser = async (
     res.cookie("access_token", accessToken, { httpOnly: true })
         .status(200)
         .json(returnResponse);
+};
+
+export const logoutUser = async (req: Request, res: Response) => {
+    res.clearCookie("access_token").json({
+        message: "User logged out successfully",
+    });
 };

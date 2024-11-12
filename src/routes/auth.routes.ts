@@ -1,8 +1,9 @@
 import { Router } from "express";
-import asyncErrorHandler from "../utils/AsyncErrorHandler";
-import { testAuth } from "../controllers/auth.controller";
+import asyncErrorHandler from "../utils/asyncErrorHandler";
+import { loginUser, registerUser } from "../controllers/auth.controller";
 const router = Router();
 
-router.route("/test").get(asyncErrorHandler(testAuth));
+router.route("/register").post(asyncErrorHandler(registerUser));
+router.route("/login").post(asyncErrorHandler(loginUser));
 
 export default router;

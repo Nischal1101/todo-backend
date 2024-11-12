@@ -4,7 +4,7 @@ import logger from "./config/logger";
 
 const startServer = () => {
     try {
-        app.listen(Config.PORT, () => {
+        app.listen(Config.PORT || 8000, () => {
             logger.info(`Listening on port ${Config.PORT}`);
         });
     } catch (error) {

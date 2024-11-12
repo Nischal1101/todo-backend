@@ -1,14 +1,20 @@
-import { NextFunction, Request, Response } from "express";
-import { RegisterUserRequest, ReturnResponse } from "../types";
+import { NextFunction, Response } from "express";
+import {
+    IRegisterUserRequest,
+    ReturnResponse,
+    ILoginUserRequest,
+} from "../types";
 import db from "../db/db";
 import { Users } from "../db/schema";
-import { eq, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import CustomErrorHandler from "../utils/CustomErrorHandler";
 import bcrypt from "bcrypt";
 import logger from "../config/logger";
+import { JwtPayload } from "jsonwebtoken";
+import { generateAccessToken } from "../utils/generateTokens";
 
 export const registerUser = async (
-    req: RegisterUserRequest,
+    req: IRegisterUserRequest,
     res: Response,
     next: NextFunction,
 ) => {
@@ -54,6 +60,46 @@ export const registerUser = async (
     return res.status(201).json(returnResponse);
 };
 
-export const loginUser = async (req: Request, res: Response) => {
-    res.json("hi test");
+export const loginUser = async (
+    req: ILoginUserRequest,
+    res: Response,
+    next: NextFunction,
+) => {
+    let returnResponse: ReturnResponse;
+    const { email, password } = req.body;
+
+    let existingUser;
+    try {
+        existingUser = await db
+            .select()
+            .from(Users)
+            .where(eq(Users.email, email));
+    } catch (error: unknown) {
+        if (error instanceof CustomErrorHandler)
+            return next(new CustomErrorHandler(400, error.message));
+        else return next(new CustomErrorHandler(400, "something went wrong!"));
+    }
+    if (!existingUser) {
+        return next(new CustomErrorHandler(400, "User doesn't exist"));
+    }
+    const match = await bcrypt.compare(password, existingUser[0].password);
+    if (!match) {
+        return next(new CustomErrorHandler(400, "Incorrect User credentials"));
+    }
+
+    const payload: JwtPayload = {
+        sub: String(existingUser[0].id),
+        role: existingUser[0].role,
+    };
+    const accessToken = generateAccessToken(payload);
+
+    returnResponse = {
+        status: "success",
+        message: "User logged in successfully",
+        data: existingUser[0],
+        token: { accessToken },
+    };
+    res.cookie("access_token", accessToken, { httpOnly: true })
+        .status(200)
+        .json(returnResponse);
 };

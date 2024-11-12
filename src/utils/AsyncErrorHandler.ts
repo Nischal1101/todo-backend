@@ -15,6 +15,7 @@ const asyncErrorHandler =
         } catch (err: unknown) {
             if (err instanceof CustomErrorHandler)
                 return next(new CustomErrorHandler(500, err.message));
+            else return next(new CustomErrorHandler(500, err as string));
         }
     };
 

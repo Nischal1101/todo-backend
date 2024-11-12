@@ -10,10 +10,11 @@ const error = (
     next: NextFunction,
 ) => {
     logger.error(err.message);
+
     const statusCode = err.statusCode || 500;
     return res.status(statusCode).json({
         status: "error",
-        message: `${req.originalUrl} not found on this server`,
+        message: err.message,
         data: {},
     });
 };

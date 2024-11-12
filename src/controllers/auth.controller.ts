@@ -33,7 +33,7 @@ export const registerUser = async (
             return next(new CustomErrorHandler(400, error.message));
         else return next(new CustomErrorHandler(400, "something went wrong!"));
     }
-    if (existingUser) {
+    if (existingUser.length > 0) {
         return next(new CustomErrorHandler(400, "Email already exists"));
     }
 
@@ -67,7 +67,6 @@ export const loginUser = async (
 ) => {
     let returnResponse: ReturnResponse;
     const { email, password } = req.body;
-
     let existingUser;
     try {
         existingUser = await db
@@ -77,9 +76,10 @@ export const loginUser = async (
     } catch (error: unknown) {
         if (error instanceof CustomErrorHandler)
             return next(new CustomErrorHandler(400, error.message));
-        else return next(new CustomErrorHandler(400, "something went wrong!"));
+        else return next(new CustomErrorHandler(500, "something went wrong!"));
     }
-    if (!existingUser) {
+
+    if (existingUser.length === 0) {
         return next(new CustomErrorHandler(400, "User doesn't exist"));
     }
     const match = await bcrypt.compare(password, existingUser[0].password);

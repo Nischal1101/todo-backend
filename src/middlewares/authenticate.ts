@@ -10,7 +10,7 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
 
         const access_token = token1 || token2;
         if (!access_token) {
-            return next(new CustomErrorHandler(401, "Unauthorized"));
+            return next(new CustomErrorHandler(401, "Unauthenticated"));
         }
         jwt.verify(
             access_token,

@@ -3,7 +3,7 @@ import db from "../db/db";
 import { Todos, Users } from "../db/schema";
 import CustomErrorHandler from "../utils/CustomErrorHandler";
 import { eq } from "drizzle-orm";
-import { IReturnResponse } from "../types";
+import { IReturnResponse, ITodoDeleteRequest, ITodoRequest, IUpdateTodoRequest } from "../types";
 import logger from "../config/logger";
 
 export const getAllTodos = async (
@@ -27,7 +27,7 @@ export const getIndividualTodo = async (
     res: Response,
     next: NextFunction,
 ) => {
-    const userId = Number(req.params.userid);
+    const userId = Number(req.user.sub);
     let returnResponse: IReturnResponse;
     let todos;
     try {
@@ -55,22 +55,125 @@ export const getIndividualTodo = async (
 };
 
 export const createTodo = async (
-    req: Request,
+    req: ITodoRequest,
     res: Response,
     next: NextFunction,
 ) => {
-    const { title, description, dueDate, priority, status } = req.body;
-    await db.insert(Todos).values();
+    const { title, description, dueDate, priority } = req.body;
+    const userId = Number(req.user.sub);
+    let todo;
+    let returnResponse: IReturnResponse;
+    try {
+        todo = await db
+            .insert(Todos)
+            .values({
+                title,
+                description,
+                dueDate: dueDate.toISOString(),
+                userId,
+                priority,
+            })
+            .returning();
+    } catch (error: unknown) {
+        if (error instanceof CustomErrorHandler)
+            return next(
+                new CustomErrorHandler(
+                    400,
+                    "Error creating todo in the database",
+                ),
+            );
+
+        return next(new CustomErrorHandler(500, String(error)));
+    }
+    returnResponse = {
+        data: todo,
+        message: "Todo created successfully",
+        status: "success",
+    };
+    return res.status(201).json(returnResponse);
 };
 
 export const updateSpecificTodo = async (
-    req: Request,
+    req: IUpdateTodoRequest,
     res: Response,
     next: NextFunction,
-) => {};
+) => {
+    let returnResponse: IReturnResponse;
+    const todoId = Number(req.params.id);
+    if (!todoId) {
+        return next(new CustomErrorHandler(400, "TodoId is required"));
+    }
+    const { title, description, dueDate, priority, userId } = req.body;
+    if (req.user.sub !== String(userId))
+        return next(
+            new CustomErrorHandler(403, "Lack of permission to modify todo"),
+        );
+    let updatedTodo;
+    try {
+        updatedTodo = await db
+            .update(Todos)
+            .set({
+                title,
+                description,
+                dueDate: dueDate?.toISOString(),
+                priority,
+            })
+            .where(eq(Todos.id, todoId))
+            .returning({ updatedId: Users.id }); // This returns the updated row(s)
+
+        if (!updatedTodo.length) {
+            return next(new CustomErrorHandler(404, "Todo not found"));
+        }
+    } catch (error: unknown) {
+        if (error instanceof CustomErrorHandler)
+            return next(
+                new CustomErrorHandler(
+                    500,
+                    "An error occurred while updating the todo",
+                ),
+            );
+        return next(new CustomErrorHandler(500, String(error)));
+    }
+    returnResponse = {
+        data: updatedTodo[0],
+        message: "Todo created successfully",
+        status: "success",
+    };
+    return res.status(201).json(returnResponse);
+};
 
 export const deleteSpecificTodo = async (
-    req: Request,
+    req: ITodoDeleteRequest,
     res: Response,
     next: NextFunction,
-) => {};
+) => {
+    let returnResponse: IReturnResponse;
+    const todoId = Number(req.params.id);
+    const { userId } = req.body;
+
+    if (!todoId) {
+        return next(new CustomErrorHandler(400, "TodoId is required"));
+    }
+    if (req.user.sub !== String(userId))
+        return next(
+            new CustomErrorHandler(403, "Lack of permission to modify todo"),
+        );
+    try {
+        await db.delete(Todos).where(eq(Todos.id, todoId));
+    } catch (error: unknown) {
+        if (error instanceof CustomErrorHandler)
+            return next(
+                new CustomErrorHandler(
+                    500,
+                    "An error occurred while deleting the todo",
+                ),
+            );
+        return next(new CustomErrorHandler(500, String(error)));
+    }
+    returnResponse = {
+        data: {},
+        message: "Todo deleted successfully",
+        status: "success",
+    };
+    return res.status(201).json(returnResponse);
+};

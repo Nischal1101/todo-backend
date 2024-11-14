@@ -4,6 +4,8 @@ import express, { urlencoded } from "express";
 import error from "./middlewares/error";
 import notFoundError from "./utils/notFoundError";
 import authRouter from "./routes/auth.routes";
+import userRouter from "./routes/user.routes";
+import todoRouter from "./routes/todo.routes";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -26,6 +28,8 @@ app.use(urlencoded({ extended: false }));
 app.use(express.json());
 
 app.use("/api/auth", authRouter);
+app.use("/api/todo", todoRouter);
+app.use("/api/user", userRouter);
 app.use(error);
 app.use("*", notFoundError);
 

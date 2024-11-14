@@ -19,7 +19,7 @@ const Users = pgTable("users", {
     name: varchar("name").notNull(),
     email: varchar("email").notNull().unique(),
     password: text("password").notNull(),
-    role: roleEnum("role").notNull().default("user"),
+    role: roleEnum("role").default("user"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -30,8 +30,8 @@ const Todos = pgTable("todos", {
     title: varchar("title").notNull(),
     description: text("description"),
     dueDate: date("due_date").notNull(),
-    priority: priorityEnum("priority").notNull().default("low"),
-    status: statusEnum("status").notNull().default("incomplete"),
+    priority: priorityEnum("priority").default("low"),
+    status: statusEnum("status").default("incomplete"),
     userId: integer("user_id")
         .references(() => Users.id, { onDelete: "cascade" })
         .notNull(),

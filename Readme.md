@@ -30,6 +30,8 @@ This is the backend for the Todo Enhanced application. It is built using Node.js
     PORT=8000
     DATABASE_URL=your_database_url(postgres)
     JWT_SECRET=your_jwt_secret
+    ACCESS_TOKEN_EXPIRY_TIME=1m
+    NODE_ENV=test
     ```
 
 4. **Run database migrations:**
@@ -49,6 +51,8 @@ This is the backend for the Todo Enhanced application. It is built using Node.js
     ```
 
 ## API Endpoints
+
+### Todos
 
 -   `GET /todos` - Get all todos
 -   `GET /:todoid` - Get a specific todo by ID

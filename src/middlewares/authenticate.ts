@@ -8,7 +8,7 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
         const token1 = (req.cookies as { access_token?: string })?.access_token;
         const token2 = req.header("Authorization")?.split(" ")[1];
 
-        const access_token = token1 || token2;
+        const access_token = token2 || token1;
         if (!access_token) {
             return next(new CustomErrorHandler(401, "Unauthenticated"));
         }
@@ -25,7 +25,12 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
                             new CustomErrorHandler(401, "Token expired"),
                         );
                     } else {
-                        return next(new CustomErrorHandler(403, "forbidden"));
+                        return next(
+                            new CustomErrorHandler(
+                                403,
+                                "forbidden" + String(err.message),
+                            ),
+                        );
                     }
                 }
 

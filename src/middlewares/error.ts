@@ -15,6 +15,7 @@ const error = (
     return res.status(statusCode).json({
         status: "error",
         message: err.message,
+        stack: err.stack || "no",
         data: {},
     });
 };

@@ -1,18 +1,40 @@
 import { NextFunction, Request, Response } from "express";
 import db from "../db/db";
-import { Todos, Users } from "../db/schema";
+import { Files, Todos, Users } from "../db/schema";
 import CustomErrorHandler from "../utils/CustomErrorHandler";
-import { eq } from "drizzle-orm";
-import { IReturnResponse, ITodoDeleteRequest, ITodoRequest, IUpdateTodoRequest } from "../types";
+import { and, asc, desc, eq, like, or } from "drizzle-orm";
+import {
+    IReturnResponse,
+    ISearchQuery,
+    ITodoDeleteRequest,
+    ITodoRequest,
+    IUpdateTodoRequest,
+} from "../types";
 import logger from "../config/logger";
 
 export const getAllTodos = async (
-    req: Request,
+    req: ISearchQuery,
     res: Response,
     next: NextFunction,
 ) => {
+    let returnResponse: IReturnResponse;
+    let todos;
+    const { title: search, order } = req.query;
+    if (order && !["asc", "desc"].includes(order)) {
+        throw new CustomErrorHandler(
+            400,
+            "Invalid order parameter. Use 'asc' or 'desc'",
+        );
+    }
+    const mySearch = String(search);
     try {
-        await db.select().from(Todos);
+        todos = await db
+            .select()
+            .from(Todos)
+            .where(search ? like(Todos.title, `%${mySearch}%`) : undefined)
+            .orderBy(
+                order === "asc" ? asc(Todos.createdAt) : desc(Todos.createdAt),
+            );
     } catch (error: unknown) {
         if (error instanceof CustomErrorHandler)
             return next(
@@ -20,22 +42,54 @@ export const getAllTodos = async (
             );
         else return next(new CustomErrorHandler(400, String(error)));
     }
+    returnResponse = {
+        message: "Successfully fetched all todos",
+        data: todos,
+        status: "success",
+    };
+    return res.status(200).json(returnResponse);
 };
 
 export const getIndividualTodo = async (
-    req: Request,
+    req: ISearchQuery,
     res: Response,
     next: NextFunction,
 ) => {
     const userId = Number(req.user.sub);
     let returnResponse: IReturnResponse;
     let todos;
+    const { title: search, order } = req.query;
+    if (order && !["asc", "desc"].includes(order)) {
+        throw new CustomErrorHandler(
+            400,
+            "Invalid order parameter. Use 'asc' or 'desc'",
+        );
+    }
+    const mySearch = String(search);
     try {
         todos = await db
-            .select()
+            .select({
+                id: Todos.id,
+                title: Todos.title,
+                description: Todos.description,
+                dueDate: Todos.dueDate,
+                priority: Todos.priority,
+                status: Todos.status,
+                // userId: Todos.userId,
+                createdAt: Todos.createdAt,
+                updatedAt: Todos.updatedAt,
+            })
             .from(Todos)
-            .leftJoin(Users, eq(Todos.id, Users.id))
-            .where(eq(Todos.userId, userId));
+            .leftJoin(Users, eq(Todos.userId, Users.id))
+            .where(
+                or(
+                    eq(Todos.userId, userId),
+                    search ? like(Todos.title, `%${mySearch}%`) : undefined,
+                ),
+            )
+            .orderBy(
+                order === "asc" ? asc(Todos.createdAt) : desc(Todos.createdAt),
+            );
     } catch (error: unknown) {
         if (error instanceof CustomErrorHandler)
             return next(
@@ -43,15 +97,48 @@ export const getIndividualTodo = async (
             );
         else return next(new CustomErrorHandler(400, String(error)));
     }
+
     logger.info("Individual todos has been fetched successfully ", {
         userId,
     });
     returnResponse = {
         status: "success",
-        message: "User registered Successfully",
+        message: "Individual todo fetched Successfully",
         data: todos,
     };
-    return res.status(201).json(returnResponse);
+    return res.status(200).json(returnResponse);
+};
+export const getSpecificTodo = async (
+    req: ISearchQuery,
+    res: Response,
+    next: NextFunction,
+) => {
+    const { todoid: todoId } = req.params;
+    let returnResponse: IReturnResponse;
+    let todos;
+
+    try {
+        todos = await db
+            .select()
+            .from(Todos)
+            .where(eq(Todos.id, Number(todoId)));
+    } catch (error: unknown) {
+        if (error instanceof CustomErrorHandler)
+            return next(
+                new CustomErrorHandler(400, "Error fetching individual todos"),
+            );
+        else return next(new CustomErrorHandler(400, String(error)));
+    }
+
+    logger.info("Specific todo has been fetched successfully ", {
+        todoId,
+    });
+    returnResponse = {
+        status: "success",
+        message: "Specific todo fetched Successfully",
+        data: todos[0],
+    };
+    return res.status(200).json(returnResponse);
 };
 
 export const createTodo = async (
@@ -60,6 +147,9 @@ export const createTodo = async (
     next: NextFunction,
 ) => {
     const { title, description, dueDate, priority } = req.body;
+    const date = new Date(dueDate);
+    const { filename, path } = req.file as Express.Multer.File;
+
     const userId = Number(req.user.sub);
     let todo;
     let returnResponse: IReturnResponse;
@@ -69,7 +159,7 @@ export const createTodo = async (
             .values({
                 title,
                 description,
-                dueDate: dueDate.toISOString(),
+                dueDate: date.toISOString(),
                 userId,
                 priority,
             })
@@ -85,8 +175,12 @@ export const createTodo = async (
 
         return next(new CustomErrorHandler(500, String(error)));
     }
+
+    await db
+        .insert(Files)
+        .values({ todoId: todo[0]?.id, fileName: filename, filePath: path });
     returnResponse = {
-        data: todo,
+        data: todo[0],
         message: "Todo created successfully",
         status: "success",
     };
@@ -104,6 +198,14 @@ export const updateSpecificTodo = async (
         return next(new CustomErrorHandler(400, "TodoId is required"));
     }
     const { title, description, dueDate, priority, userId } = req.body;
+
+    const toUpdate = {
+        ...(title && { title }),
+        ...(description && { description }),
+        ...(dueDate && { dueDate: new Date(dueDate).toISOString() }),
+        ...(priority && { priority }),
+    };
+
     if (req.user.sub !== String(userId))
         return next(
             new CustomErrorHandler(403, "Lack of permission to modify todo"),
@@ -112,12 +214,7 @@ export const updateSpecificTodo = async (
     try {
         updatedTodo = await db
             .update(Todos)
-            .set({
-                title,
-                description,
-                dueDate: dueDate?.toISOString(),
-                priority,
-            })
+            .set(toUpdate)
             .where(eq(Todos.id, todoId))
             .returning({ updatedId: Users.id }); // This returns the updated row(s)
 
@@ -134,6 +231,7 @@ export const updateSpecificTodo = async (
             );
         return next(new CustomErrorHandler(500, String(error)));
     }
+
     returnResponse = {
         data: updatedTodo[0],
         message: "Todo created successfully",
@@ -149,15 +247,10 @@ export const deleteSpecificTodo = async (
 ) => {
     let returnResponse: IReturnResponse;
     const todoId = Number(req.params.id);
-    const { userId } = req.body;
 
     if (!todoId) {
         return next(new CustomErrorHandler(400, "TodoId is required"));
     }
-    if (req.user.sub !== String(userId))
-        return next(
-            new CustomErrorHandler(403, "Lack of permission to modify todo"),
-        );
     try {
         await db.delete(Todos).where(eq(Todos.id, todoId));
     } catch (error: unknown) {

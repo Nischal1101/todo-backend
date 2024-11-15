@@ -9,15 +9,22 @@ import {
     getIndividualTodo,
     deleteSpecificTodo,
     createTodo,
+    getSpecificTodo,
 } from "../controllers/todo.controller";
+import { upload } from "../middlewares/multer";
 const router = Router();
 
-router.route("/").get(asyncErrorHandler(getAllTodos));
-
+router.route("/todos").get(asyncErrorHandler(getAllTodos));
+router.route("/:todoid").get(authenticate, asyncErrorHandler(getSpecificTodo));
 router
     .route("/")
     .get(authenticate, asyncErrorHandler(getIndividualTodo))
-    .post(validate(TodoSchema), authenticate, asyncErrorHandler(createTodo));
+    .post(
+        upload.single("file"),
+        validate(TodoSchema),
+        authenticate,
+        asyncErrorHandler(createTodo),
+    );
 router
     .route("/:id")
     .delete(authenticate, asyncErrorHandler(deleteSpecificTodo))

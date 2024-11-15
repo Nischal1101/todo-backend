@@ -12,7 +12,7 @@ This is the backend for the Todo Enhanced application. It is built using Node.js
 1. **Clone the repository:**
 
     ```sh
-    git clone https://github.com/nischal1101/todo-enhanced.git
+    git clone https://github.com/nischal1101/todo-backend.git
     cd todo-enhanced/todo-backend
     ```
 

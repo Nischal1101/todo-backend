@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import {
     IRegisterUserRequest,
-    ReturnResponse,
+    IReturnResponse,
     ILoginUserRequest,
 } from "../types";
 import db from "../db/db";
@@ -18,10 +18,8 @@ export const registerUser = async (
     res: Response,
     next: NextFunction,
 ) => {
-    let returnResponse: ReturnResponse;
+    let returnResponse: IReturnResponse;
     const { email, name, password } = req.body;
-    const role = req.body.role || "user";
-
     let existingUser;
     try {
         existingUser = await db
@@ -42,7 +40,7 @@ export const registerUser = async (
     try {
         user = await db
             .insert(Users)
-            .values({ name, email, password: hashedpw, role })
+            .values({ name, email, password: hashedpw })
             .returning();
     } catch (error: unknown) {
         if (error instanceof CustomErrorHandler)
@@ -65,7 +63,7 @@ export const loginUser = async (
     res: Response,
     next: NextFunction,
 ) => {
-    let returnResponse: ReturnResponse;
+    let returnResponse: IReturnResponse;
     const { email, password } = req.body;
     let existingUser;
     try {
@@ -99,13 +97,55 @@ export const loginUser = async (
         data: existingUser[0],
         token: { accessToken },
     };
-    res.cookie("access_token", accessToken, { httpOnly: true })
+    return res
         .status(200)
+        .cookie("access_token", accessToken, {
+            httpOnly: true,
+            secure: false,
+        })
+
         .json(returnResponse);
 };
 
 export const logoutUser = async (req: Request, res: Response) => {
-    res.clearCookie("access_token").json({
+    let returnResponse;
+    returnResponse = {
+        status: "success",
         message: "User logged out successfully",
-    });
+        data: { userId: req.user.sub },
+    };
+    return res
+        .status(200)
+        .clearCookie("access_token", { httpOnly: true, secure: false })
+        .json(returnResponse);
+};
+
+export const getSelf = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    let returnResponse;
+    let data;
+    try {
+        data = await db
+            .select({ id: Users.id, email: Users.email, role: Users.role })
+            .from(Users)
+            .where(eq(Users.id, Number(req.user.sub)));
+    } catch (error: unknown) {
+        if (error instanceof CustomErrorHandler)
+            return next(
+                new CustomErrorHandler(400, "Error fetching self data"),
+            );
+        return next(new CustomErrorHandler(500, String(error)));
+    }
+    returnResponse = {
+        status: "success",
+        message: "self data fetched successfully",
+        data: data[0],
+    };
+    return res
+        .status(200)
+        .clearCookie("access_token", { httpOnly: true, secure: false })
+        .json(returnResponse);
 };

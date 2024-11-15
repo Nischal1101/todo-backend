@@ -1,16 +1,16 @@
-import { NextFunction, Request, Response } from "express";
+import { asc, desc, eq, like, or } from "drizzle-orm";
+import { NextFunction, Response } from "express";
+import logger from "../config/logger";
 import db from "../db/db";
 import { Files, Todos, Users } from "../db/schema";
-import CustomErrorHandler from "../utils/CustomErrorHandler";
-import { and, asc, desc, eq, like, or } from "drizzle-orm";
 import {
-    IReturnResponse,
-    ISearchQuery,
-    ITodoDeleteRequest,
-    ITodoRequest,
-    IUpdateTodoRequest,
+  IReturnResponse,
+  ISearchQuery,
+  ITodoDeleteRequest,
+  ITodoRequest,
+  IUpdateTodoRequest,
 } from "../types";
-import logger from "../config/logger";
+import CustomErrorHandler from "../utils/CustomErrorHandler";
 
 export const getAllTodos = async (
     req: ISearchQuery,

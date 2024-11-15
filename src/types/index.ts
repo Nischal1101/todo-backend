@@ -26,7 +26,7 @@ export interface ITodoRequest extends Request {
     body: {
         title: string;
         description: string;
-        dueDate: Date;
+        dueDate: string;
         priority: "high" | "medium" | "low";
     };
 }
@@ -35,7 +35,7 @@ export interface IUpdateTodoRequest extends Request {
     body: {
         title?: string;
         description?: string;
-        dueDate?: Date;
+        dueDate?: string;
         priority?: "high" | "medium" | "low";
         userId: number;
     };
@@ -43,5 +43,14 @@ export interface IUpdateTodoRequest extends Request {
 export interface ITodoDeleteRequest extends Request {
     body: {
         userId: number;
+    };
+}
+// type TodoSortField = "dueDate" | "createdAt";
+type SortOrder = "asc" | "desc";
+
+export interface ISearchQuery extends Request {
+    query: {
+        title?: string;
+        order?: SortOrder;
     };
 }
